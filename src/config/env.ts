@@ -1,19 +1,33 @@
-const port = Number(process.env.PORT ?? 3333);
+function readEnv(name: string, fallback: string) {
+  const value = process.env[name] ?? fallback;
 
-if (Number.isNaN(port)) {
-  throw new Error("PORT deve ser um numero valido.");
+  return value.trim().replace(/^["']|["']$/g, "");
 }
+
+function readNumberEnv(name: string, fallback: string) {
+  const value = Number(readEnv(name, fallback));
+
+  if (Number.isNaN(value)) {
+    throw new Error(`${name} deve ser um numero valido.`);
+  }
+
+  return value;
+}
+
+const port = readNumberEnv("PORT", "3333");
+const databasePort = readNumberEnv("DB_PORT", "3306");
+
 
 export const env = {
   port,
-  jwtSecret: process.env.JWT_SECRET ?? "dev_timer_estudo_secret",
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "1d",
-  frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:3000",
+  jwtSecret: readEnv("JWT_SECRET", "dev_timer_estudo_secret"),
+  jwtExpiresIn: readEnv("JWT_EXPIRES_IN", "1d"),
+  frontendUrl: readEnv("FRONTEND_URL", "http://localhost:3000"),
   database: {
-    host: process.env.DB_HOST ?? "localhost",
-    user: process.env.DB_USER ?? "root",
-    password: process.env.DB_PASSWORD ?? "",
-    name: process.env.DB_NAME ?? "timer_estudo",
-    port: Number(process.env.DB_PORT ?? 3306)
+    host: readEnv("DB_HOST", "localhost"),
+    user: readEnv("DB_USER", "root"),
+    password: readEnv("DB_PASSWORD", ""),
+    name: readEnv("DB_NAME", "timer_estudo"),
+    port: databasePort
   }
 };
