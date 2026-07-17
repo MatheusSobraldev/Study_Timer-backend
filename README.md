@@ -96,6 +96,25 @@ CREATE INDEX idx_study_sessions_user_id
 
 CREATE INDEX idx_study_sessions_started_at
   ON study_sessions(started_at);
+
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id CHAR(36) PRIMARY KEY,
+  default_timer_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 25,
+  completion_sound_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  completion_sound_volume TINYINT UNSIGNED NOT NULL DEFAULT 75,
+  pause_alert_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 5,
+  daily_goal_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 60,
+  auto_start_timer BOOLEAN NOT NULL DEFAULT FALSE,
+  reduce_animations BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ON UPDATE CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_user_settings_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
+);
 ```
 
 ## Rotas
@@ -119,6 +138,13 @@ Todas as rotas abaixo exigem header `Authorization: Bearer <token>`.
 - `POST /api/study-sessions`
 - `PUT /api/study-sessions/:id`
 - `DELETE /api/study-sessions/:id`
+
+### Configuracoes
+
+As rotas abaixo tambem exigem header `Authorization: Bearer <token>`.
+
+- `GET /api/settings`
+- `PUT /api/settings`
 
 Exemplo de registro:
 
