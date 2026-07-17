@@ -4,6 +4,8 @@ import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { database } from "../config/database";
 import { AppError } from "../errors/AppError";
 import {
+  CompletionSound,
+  completionSoundOptions,
   defaultUserSettings,
   mapUserSettingsFromDatabase,
   UserSettings,
@@ -11,7 +13,7 @@ import {
 } from "../models/UserSettings";
 
 const settingsSelect = `SELECT user_id, default_timer_minutes, completion_sound_enabled,
-  completion_sound_volume, pause_alert_minutes, daily_goal_minutes,
+  completion_sound_volume, completion_sound, pause_alert_minutes, daily_goal_minutes,
   auto_start_timer, reduce_animations, created_at, updated_at
   FROM user_settings
   WHERE user_id = ?
@@ -40,20 +42,32 @@ function parseBooleanSetting(value: unknown, label: string) {
   return value;
 }
 
+function parseCompletionSound(value: unknown): CompletionSound {
+  if (
+    typeof value !== "string" ||
+    !completionSoundOptions.includes(value as CompletionSound)
+  ) {
+    throw new AppError("O som de conclusao selecionado e invalido.");
+  }
+
+  return value as CompletionSound;
+}
+
 export class SettingsController {
   private async getOrCreate(userId: string) {
     await database.execute<ResultSetHeader>(
       `INSERT INTO user_settings
         (user_id, default_timer_minutes, completion_sound_enabled,
-         completion_sound_volume, pause_alert_minutes, daily_goal_minutes,
-         auto_start_timer, reduce_animations)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         completion_sound_volume, completion_sound, pause_alert_minutes,
+         daily_goal_minutes, auto_start_timer, reduce_animations)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)`,
       [
         userId,
         defaultUserSettings.defaultTimerMinutes,
         defaultUserSettings.completionSoundEnabled,
         defaultUserSettings.completionSoundVolume,
+        defaultUserSettings.completionSound,
         defaultUserSettings.pauseAlertMinutes,
         defaultUserSettings.dailyGoalMinutes,
         defaultUserSettings.autoStartTimer,
@@ -102,6 +116,10 @@ export class SettingsController {
         body.completionSoundVolume === undefined
           ? currentSettings.completionSoundVolume
           : parseIntegerSetting(body.completionSoundVolume, "O volume", 0, 100),
+      completionSound:
+        body.completionSound === undefined
+          ? currentSettings.completionSound
+          : parseCompletionSound(body.completionSound),
       pauseAlertMinutes:
         body.pauseAlertMinutes === undefined
           ? currentSettings.pauseAlertMinutes
@@ -123,13 +141,14 @@ export class SettingsController {
     await database.execute<ResultSetHeader>(
       `UPDATE user_settings
        SET default_timer_minutes = ?, completion_sound_enabled = ?,
-           completion_sound_volume = ?, pause_alert_minutes = ?,
+           completion_sound_volume = ?, completion_sound = ?, pause_alert_minutes = ?,
            daily_goal_minutes = ?, auto_start_timer = ?, reduce_animations = ?
        WHERE user_id = ?`,
       [
         settings.defaultTimerMinutes,
         settings.completionSoundEnabled,
         settings.completionSoundVolume,
+        settings.completionSound,
         settings.pauseAlertMinutes,
         settings.dailyGoalMinutes,
         settings.autoStartTimer,

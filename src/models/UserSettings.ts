@@ -1,8 +1,19 @@
+export const completionSoundOptions = [
+  "disco",
+  "mario",
+  "vitoria",
+  "congrats",
+  "voila"
+] as const;
+
+export type CompletionSound = (typeof completionSoundOptions)[number];
+
 export interface UserSettings {
   userId: string;
   defaultTimerMinutes: number;
   completionSoundEnabled: boolean;
   completionSoundVolume: number;
+  completionSound: CompletionSound;
   pauseAlertMinutes: number;
   dailyGoalMinutes: number;
   autoStartTimer: boolean;
@@ -16,6 +27,7 @@ export interface UserSettingsDatabaseRow {
   default_timer_minutes: number;
   completion_sound_enabled: number | boolean;
   completion_sound_volume: number;
+  completion_sound: string;
   pause_alert_minutes: number;
   daily_goal_minutes: number;
   auto_start_timer: number | boolean;
@@ -28,6 +40,7 @@ export const defaultUserSettings = {
   defaultTimerMinutes: 25,
   completionSoundEnabled: true,
   completionSoundVolume: 75,
+  completionSound: "disco" as CompletionSound,
   pauseAlertMinutes: 5,
   dailyGoalMinutes: 60,
   autoStartTimer: false,
@@ -37,11 +50,18 @@ export const defaultUserSettings = {
 export function mapUserSettingsFromDatabase(
   row: UserSettingsDatabaseRow
 ): UserSettings {
+  const completionSound = completionSoundOptions.includes(
+    row.completion_sound as CompletionSound
+  )
+    ? (row.completion_sound as CompletionSound)
+    : defaultUserSettings.completionSound;
+
   return {
     userId: row.user_id,
     defaultTimerMinutes: row.default_timer_minutes,
     completionSoundEnabled: Boolean(row.completion_sound_enabled),
     completionSoundVolume: row.completion_sound_volume,
+    completionSound,
     pauseAlertMinutes: row.pause_alert_minutes,
     dailyGoalMinutes: row.daily_goal_minutes,
     autoStartTimer: Boolean(row.auto_start_timer),

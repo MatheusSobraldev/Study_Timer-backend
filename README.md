@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   default_timer_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 25,
   completion_sound_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   completion_sound_volume TINYINT UNSIGNED NOT NULL DEFAULT 75,
+  completion_sound VARCHAR(32) NOT NULL DEFAULT 'disco',
   pause_alert_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 5,
   daily_goal_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 60,
   auto_start_timer BOOLEAN NOT NULL DEFAULT FALSE,
@@ -115,6 +116,14 @@ CREATE TABLE IF NOT EXISTS user_settings (
     REFERENCES users(id)
     ON DELETE CASCADE
 );
+```
+
+Se a tabela `user_settings` ja existia antes da opcao de toques, execute uma vez:
+
+```sql
+ALTER TABLE user_settings
+  ADD COLUMN completion_sound VARCHAR(32) NOT NULL DEFAULT 'disco'
+  AFTER completion_sound_volume;
 ```
 
 ## Rotas
