@@ -3,6 +3,7 @@ export interface StudySession {
   userId: string;
   title: string;
   subject?: string;
+  durationInSeconds: number;
   durationInMinutes: number;
   startedAt: Date;
   finishedAt: Date;
@@ -15,6 +16,7 @@ export interface StudySessionDatabaseRow {
   user_id: string;
   title: string;
   subject?: string | null;
+  duration_in_seconds: number;
   duration_in_minutes: number;
   started_at: Date;
   finished_at: Date;
@@ -25,12 +27,15 @@ export interface StudySessionDatabaseRow {
 export function mapStudySessionFromDatabase(
   row: StudySessionDatabaseRow
 ): StudySession {
+  const durationInSeconds = Number(row.duration_in_seconds);
+
   return {
     id: row.id,
     userId: row.user_id,
     title: row.title,
     subject: row.subject ?? undefined,
-    durationInMinutes: row.duration_in_minutes,
+    durationInSeconds,
+    durationInMinutes: durationInSeconds / 60,
     startedAt: row.started_at,
     finishedAt: row.finished_at,
     notes: row.notes ?? undefined,

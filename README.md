@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS study_sessions (
   title VARCHAR(150) NOT NULL,
   subject VARCHAR(120),
   duration_in_minutes INT NOT NULL,
+  duration_in_seconds INT UNSIGNED NOT NULL,
   started_at DATETIME NOT NULL,
   finished_at DATETIME NOT NULL,
   notes TEXT,
@@ -85,7 +86,7 @@ CREATE TABLE IF NOT EXISTS study_sessions (
     ON DELETE CASCADE,
 
   CONSTRAINT chk_study_sessions_duration
-    CHECK (duration_in_minutes > 0),
+    CHECK (duration_in_minutes > 0 AND duration_in_seconds > 0),
 
   CONSTRAINT chk_study_sessions_dates
     CHECK (finished_at > started_at)
@@ -116,6 +117,21 @@ CREATE TABLE IF NOT EXISTS user_settings (
     REFERENCES users(id)
     ON DELETE CASCADE
 );
+```
+
+Se a tabela `study_sessions` foi criada antes do suporte a segundos, execute uma vez:
+
+```sql
+ALTER TABLE study_sessions
+  ADD COLUMN duration_in_seconds INT UNSIGNED NULL
+  AFTER duration_in_minutes;
+
+UPDATE study_sessions
+SET duration_in_seconds = duration_in_minutes * 60
+WHERE duration_in_seconds IS NULL;
+
+ALTER TABLE study_sessions
+  MODIFY duration_in_seconds INT UNSIGNED NOT NULL;
 ```
 
 Se a tabela `user_settings` ja existia antes da opcao de toques, execute uma vez:

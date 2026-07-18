@@ -9,6 +9,32 @@ import {
   StudySessionDatabaseRow
 } from "../models/StudySession";
 
+function parseDurationInSeconds(
+  durationInSeconds: unknown,
+  durationInMinutes: unknown
+) {
+  const receivedSeconds = durationInSeconds !== undefined;
+  const duration = receivedSeconds
+    ? Number(durationInSeconds)
+    : Number(durationInMinutes) * 60;
+
+  if (
+    !Number.isFinite(duration) ||
+    duration <= 0 ||
+    (receivedSeconds && !Number.isInteger(duration))
+  ) {
+    throw new AppError(
+      "A duracao deve ser informada em segundos inteiros e ser maior que zero."
+    );
+  }
+
+  return Math.round(duration);
+}
+
+function getLegacyDurationInMinutes(durationInSeconds: number) {
+  return Math.max(1, Math.ceil(durationInSeconds / 60));
+}
+
 export class StudySessionController {
   async index(request: Request, response: Response) {
     const userId = request.user?.id;
@@ -20,7 +46,7 @@ export class StudySessionController {
     const [rows] = await database.execute<
       RowDataPacket[] & StudySessionDatabaseRow[]
     >(
-      `SELECT id, user_id, title, subject, duration_in_minutes, started_at, finished_at, notes, created_at
+      `SELECT id, user_id, title, subject, duration_in_seconds, duration_in_minutes, started_at, finished_at, notes, created_at
        FROM study_sessions
        WHERE user_id = ?
        ORDER BY started_at DESC`,
@@ -28,8 +54,8 @@ export class StudySessionController {
     );
     const sessions = rows.map(mapStudySessionFromDatabase);
 
-    const totalMinutes = sessions.reduce(
-      (sum, session) => sum + session.durationInMinutes,
+    const totalSeconds = sessions.reduce(
+      (sum, session) => sum + session.durationInSeconds,
       0
     );
 
@@ -37,7 +63,8 @@ export class StudySessionController {
       sessions,
       summary: {
         totalSessions: sessions.length,
-        totalMinutes
+        totalSeconds,
+        totalMinutes: totalSeconds / 60
       }
     });
   }
@@ -53,7 +80,7 @@ export class StudySessionController {
     const [rows] = await database.execute<
       RowDataPacket[] & StudySessionDatabaseRow[]
     >(
-      `SELECT id, user_id, title, subject, duration_in_minutes, started_at, finished_at, notes, created_at
+      `SELECT id, user_id, title, subject, duration_in_seconds, duration_in_minutes, started_at, finished_at, notes, created_at
        FROM study_sessions
        WHERE id = ? AND user_id = ?
        LIMIT 1`,
@@ -70,26 +97,37 @@ export class StudySessionController {
 
   async create(request: Request, response: Response) {
     const userId = request.user?.id;
-    const { title, subject, durationInMinutes, startedAt, finishedAt, notes } =
-      request.body;
+    const {
+      title,
+      subject,
+      durationInSeconds,
+      durationInMinutes,
+      startedAt,
+      finishedAt,
+      notes
+    } = request.body;
 
     if (!userId) {
       throw new AppError("Usuario nao autenticado.", 401);
     }
 
-    if (!title || !durationInMinutes || !startedAt || !finishedAt) {
+    if (
+      !title ||
+      (durationInSeconds === undefined && durationInMinutes === undefined) ||
+      !startedAt ||
+      !finishedAt
+    ) {
       throw new AppError(
         "Titulo, duracao, inicio e fim do estudo sao obrigatorios."
       );
     }
 
-    const duration = Number(durationInMinutes);
+    const duration = parseDurationInSeconds(
+      durationInSeconds,
+      durationInMinutes
+    );
     const parsedStartedAt = new Date(startedAt);
     const parsedFinishedAt = new Date(finishedAt);
-
-    if (Number.isNaN(duration) || duration <= 0) {
-      throw new AppError("A duracao deve ser maior que zero.");
-    }
 
     if (
       Number.isNaN(parsedStartedAt.getTime()) ||
@@ -107,7 +145,8 @@ export class StudySessionController {
       userId,
       title: String(title).trim(),
       subject: subject ? String(subject).trim() : undefined,
-      durationInMinutes: duration,
+      durationInSeconds: duration,
+      durationInMinutes: duration / 60,
       startedAt: parsedStartedAt,
       finishedAt: parsedFinishedAt,
       notes: notes ? String(notes).trim() : undefined,
@@ -116,14 +155,16 @@ export class StudySessionController {
 
     await database.execute<ResultSetHeader>(
       `INSERT INTO study_sessions
-        (id, user_id, title, subject, duration_in_minutes, started_at, finished_at, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, user_id, title, subject, duration_in_seconds, duration_in_minutes,
+         started_at, finished_at, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         session.id,
         session.userId,
         session.title,
         session.subject ?? null,
-        session.durationInMinutes,
+        session.durationInSeconds,
+        getLegacyDurationInMinutes(session.durationInSeconds),
         session.startedAt,
         session.finishedAt,
         session.notes ?? null,
@@ -137,8 +178,15 @@ export class StudySessionController {
   async update(request: Request, response: Response) {
     const userId = request.user?.id;
     const { id } = request.params;
-    const { title, subject, durationInMinutes, startedAt, finishedAt, notes } =
-      request.body;
+    const {
+      title,
+      subject,
+      durationInSeconds,
+      durationInMinutes,
+      startedAt,
+      finishedAt,
+      notes
+    } = request.body;
 
     if (!userId) {
       throw new AppError("Usuario nao autenticado.", 401);
@@ -147,7 +195,7 @@ export class StudySessionController {
     const [rows] = await database.execute<
       RowDataPacket[] & StudySessionDatabaseRow[]
     >(
-      `SELECT id, user_id, title, subject, duration_in_minutes, started_at, finished_at, notes, created_at
+      `SELECT id, user_id, title, subject, duration_in_seconds, duration_in_minutes, started_at, finished_at, notes, created_at
        FROM study_sessions
        WHERE id = ? AND user_id = ?
        LIMIT 1`,
@@ -167,14 +215,14 @@ export class StudySessionController {
       session.subject = subject ? String(subject).trim() : undefined;
     }
 
-    if (durationInMinutes !== undefined) {
-      const duration = Number(durationInMinutes);
+    if (durationInSeconds !== undefined || durationInMinutes !== undefined) {
+      const duration = parseDurationInSeconds(
+        durationInSeconds,
+        durationInMinutes
+      );
 
-      if (Number.isNaN(duration) || duration <= 0) {
-        throw new AppError("A duracao deve ser maior que zero.");
-      }
-
-      session.durationInMinutes = duration;
+      session.durationInSeconds = duration;
+      session.durationInMinutes = duration / 60;
     }
 
     if (startedAt !== undefined) {
@@ -207,12 +255,14 @@ export class StudySessionController {
 
     await database.execute<ResultSetHeader>(
       `UPDATE study_sessions
-       SET title = ?, subject = ?, duration_in_minutes = ?, started_at = ?, finished_at = ?, notes = ?
+       SET title = ?, subject = ?, duration_in_seconds = ?, duration_in_minutes = ?,
+           started_at = ?, finished_at = ?, notes = ?
        WHERE id = ? AND user_id = ?`,
       [
         session.title,
         session.subject ?? null,
-        session.durationInMinutes,
+        session.durationInSeconds,
+        getLegacyDurationInMinutes(session.durationInSeconds),
         session.startedAt,
         session.finishedAt,
         session.notes ?? null,
