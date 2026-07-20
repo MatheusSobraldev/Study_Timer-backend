@@ -11,29 +11,10 @@ Backend em TypeScript, Node.js e Express para um site de foco nos estudos com lo
 - JWT
 - bcryptjs
 
-## Como rodar
-
-```bash
-cd backend
-npm install
-cp .env.example .env
-npm run dev
-```
-
-No Windows PowerShell:
-
-```powershell
-cd backend
-npm install
-Copy-Item .env.example .env
-npm run dev
-```
 
 Servidor padrao: `http://localhost:3333`.
 
 ## Variaveis de ambiente
-
-Configure o arquivo `.env` com os dados do seu ambiente local ou do banco em nuvem:
 
 ```env
 PORT=3333
@@ -46,8 +27,6 @@ DB_PASSWORD=sua_senha
 DB_NAME=timer_estudo
 DB_PORT=3306
 ```
-
-Nunca envie o arquivo `.env` para o GitHub.
 
 ## Banco de dados
 
