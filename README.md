@@ -150,6 +150,9 @@ As rotas abaixo tambem exigem header `Authorization: Bearer <token>`.
 - `GET /api/settings`
 - `PUT /api/settings`
 
+O campo `completionSound` aceita: `disco`, `mario`, `vitoria`, `congrats`,
+`voila`, `bob1`, `bob2` e `hanna`.
+
 Exemplo de registro:
 
 ```json

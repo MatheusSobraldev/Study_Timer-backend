@@ -3,7 +3,10 @@ export const completionSoundOptions = [
   "mario",
   "vitoria",
   "congrats",
-  "voila"
+  "voila",
+  "bob1",
+  "bob2",
+  "hanna"
 ] as const;
 
 export type CompletionSound = (typeof completionSoundOptions)[number];
